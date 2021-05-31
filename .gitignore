@@ -1,0 +1,7 @@
+.idea
+notebooks/.ipynb_checkpoints
+notebooks/.ipynb_checkpoints/*
+model.png
+notebooks/model.png
+tensorboard_logs
+tensorboard_logs/*
