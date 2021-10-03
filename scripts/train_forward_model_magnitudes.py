@@ -8,9 +8,9 @@ import tensorflow as tf
 from tensorflow import keras
 from tqdm.keras import TqdmCallback
 from sklearn.metrics import mean_squared_error
-from tensorflow.keras.regularizers import l2
-from scripts.common import load_data, compute_capacity, Setup
-
+from scripts.common import load_data, compute_capacity, Setup, plot_training_history, calculate_Z_scores, \
+    max_min_scale_1D
+from argparse import ArgumentParser
 
 tf.compat.v1.disable_eager_execution()
 
@@ -29,25 +29,19 @@ def neuralnet_batch_predict_capacities(model, rho, sigma_sq, RIS_profiles):
 
 
 
-def plot_training_history(history, yscale='log'):
-    plt.figure(figsize=(25, 8))
-    plt.plot(history.history['loss'])
-
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    if 'val_loss' in history.history.keys():
-        plt.plot(history.history['val_loss'])
-        plt.legend(['train', 'val'], loc='upper right', fontsize=14)
-
-    plt.yscale(yscale)
-    plt.grid()
-    plt.show()
 
 
 
 
+parser = ArgumentParser()
+parser.add_argument("-qq", type=int, default=1, help="Reverberation time index (1 to 3)")
+parser.add_argument("-ll", type=int, default=3, help="Perturber size index (1 to 3)")
+parser.add_argument("-snr", type=float, default=15.0, help="Transmit SNR value in dB")
+args = parser.parse_args()
 
-setup = Setup()
+
+setup = Setup(args.ll, args.qq, args.snr)
+print("\n Running setup: "+setup.get_description(' ','=')+"\n")
 
 
 RIS_configs_train, avg_squared_mag_response_train, RIS_configs_test, avg_squared_mag_response_test = load_data(setup, together=False)
@@ -69,58 +63,65 @@ y_train      = avg_squared_mag_response_train
 y_test       = avg_squared_mag_response_test
 
 
+X_train = X_train + np.random.normal(scale=0.01, size=X_train.shape)
+training_data_loss_weights = calculate_Z_scores(y_train)
+training_data_loss_weights = max_min_scale_1D(training_data_loss_weights)
+
+
+random_id = str(np.random.randint(2**32))
+#random_id = 4058011840
+print()
+filename = setup.get_model_filename(random_id)
 
 
 
 
-
-
-# reg   = 5e-8
-# p     = 0.00005
-# inp   = keras.layers.Input((X_train.shape[1],))
-# x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(inp)
+reg   = 5e-8
+p     = 0.0005
+inp   = keras.layers.Input((X_train.shape[1],))
+x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(reg))(inp)
+x     = keras.layers.Dropout(p)(x)
+x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(reg))(x)
+x     = keras.layers.Dropout(p)(x)
+# x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
 # x     = keras.layers.Dropout(p)(x)
 # x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
 # x     = keras.layers.Dropout(p)(x)
-# # x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
-# # x     = keras.layers.Dropout(p)(x)
-# # x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
-# # x     = keras.layers.Dropout(p)(x)
-#
-# out    = keras.layers.Dense(y_train.shape[1], activation='linear', name='out')(x)
-#
-# model = keras.Model(inp, out)
-#
-# stopping_callback = tf.keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=0, patience=100, verbose=1)
-# tqdm_callback    = TqdmCallback(verbose=0)
-#
-#
-# model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
-#                                                 loss='huber')
-#
-random_id = 4058011840
-# random_id = str(np.random.randint(2**32))
-#
-#
-#
-#
-# history = model.fit(X_train, y_train,
-#           epochs=2500,
-#           batch_size=80,
-#           validation_data=(X_test, y_test),
-#           verbose=0,
-#           callbacks=[tqdm_callback, stopping_callback],
-#           )
-# plot_training_history(history)
-#
-#
-#
-#
-#
-print()
-filename = setup.get_model_filename(random_id)
-# model.save(filename)
-# print(f'>>> Saved model to "{filename}".')
+
+out    = keras.layers.Dense(y_train.shape[1], activation='linear', name='out')(x)
+
+model = keras.Model(inp, out)
+
+stopping_callback = tf.keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=0, patience=100, verbose=1)
+tqdm_callback    = TqdmCallback(verbose=0)
+
+
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
+                                                loss='mse')
+
+
+
+
+
+history = model.fit(X_train,
+                    y_train,
+                    epochs=2500,
+                    batch_size=80,
+                    validation_data=(X_test, y_test),
+                    sample_weight=training_data_loss_weights,
+                    verbose=0,
+                    callbacks=[tqdm_callback, stopping_callback],
+          )
+plot_training_history(history)
+
+
+
+
+
+model.save(filename)
+print(f'>>> Saved model to "{filename}".')
+
+
 
 
 
@@ -204,7 +205,7 @@ plt.show()
 
 
 
-
+print("\nID:", random_id)
 
 
 

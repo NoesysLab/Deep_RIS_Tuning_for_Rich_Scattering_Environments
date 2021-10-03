@@ -26,6 +26,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 
+import os, sys
+
+
 DATA_DIR        = './data/summary/'
 FILENAME_FORMAT = DATA_DIR + 'SUMMARY qq={:d} ll={:d}.mat'
 QQ_VALUES       = [1,2,3]
@@ -39,27 +42,36 @@ dB2power = lambda x: 10*np.log10(x/1.)
 
 @dataclass
 class Setup:
-    LL               = 2
-    QQ               = 2
-    model_dir        = './models/magnitude_predictors'
-    model_filename   = './models/magnitude_predictors/{random_id}_model_capture_distribution.h5'
-    B                = 30
-    num_RIS_elements = 21
+    LL               : int = 2
+    QQ               : int = 2
+    SNR_dB           : float = 15.
+    model_type       : str = 'magnitude_predictors'
+    model_dir        : str = './models/{model_type}/'
+    model_filename   : str = './models/{model_type}/{{random_id}}_model_capture.h5'
+    B                : str = 30
+    num_RIS_elements : int = 21
     rho              : np.ndarray = field(init=False)
-    SNR_dB           = 15.
     SNR              : float = field(init=False)
     sigma_sq         : float = field(init=False)
 
 
     def __post_init__(self):
-        self.SNR      = dB2power(self.SNR_dB)
-        self.rho      = 1.0/np.sqrt(self.B) * np.ones((self.B,))
-        mag_rho       = np.sqrt(np.sum(np.abs(self.rho)**2))
-        self.sigma_sq = mag_rho / self.SNR
+        self.SNR            = dB2power(self.SNR_dB)
+        self.rho            = 1.0/np.sqrt(self.B) * np.ones((self.B,))
+        mag_rho             = np.sqrt(np.sum(np.abs(self.rho)**2))
+        self.sigma_sq       = mag_rho / self.SNR
+        self.model_dir      = self.model_dir.format(model_type=self.model_type)
+        self.model_filename = self.model_filename.format(model_type=self.model_type)
+
+        os.makedirs(self.model_dir, exist_ok=True)
 
 
     def get_model_filename(self, random_id):
         return self.model_filename.format(random_id=random_id)
+
+
+    def get_description(self, delim=',', eq='_'):
+        return f"LL{eq}{self.LL}{delim}QQ{eq}{self.QQ}{delim}SNR_dB{eq}{self.SNR_dB}"
 
 
 def mat2dict(mat):
@@ -129,3 +141,35 @@ def compute_capacity(mag_H_f_sq, rho, sigma_sq):
     return c
 
 
+
+
+def plot_training_history(history, yscale='log'):
+    plt.figure(figsize=(25, 8))
+    plt.plot(history.history['loss'])
+
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    if 'val_loss' in history.history.keys():
+        plt.plot(history.history['val_loss'])
+        plt.legend(['train', 'val'], loc='upper right', fontsize=14)
+
+    plt.yscale(yscale)
+    plt.grid()
+    plt.show()
+
+
+
+
+def calculate_Z_scores(X: np.ndarray)->np.ndarray:
+    mu    = X.mean(axis=0)
+    sigma = X.std(axis=0)
+    Z     = (X - mu / sigma)
+
+    if Z.ndim == 2:
+        Z = np.sum(Z, axis=1)
+
+    return Z
+
+
+def max_min_scale_1D(X):
+    return (X-X.min())/(X.max()-X.min())

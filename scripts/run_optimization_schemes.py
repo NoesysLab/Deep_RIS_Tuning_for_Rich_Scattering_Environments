@@ -21,10 +21,10 @@ from tensorflow.keras import backend as K
 
 
 
-random_id = 4058011840
+random_id = 1501880932
 
 
-setup          = Setup()
+setup          = Setup(1, 3, 15)
 model_filename = setup.get_model_filename(random_id)
 model          = tf.keras.models.load_model(model_filename)
 
@@ -173,6 +173,20 @@ def perform_gradient_ascent(model,
     max_capacity = 0.
     best_phi     = None
 
+
+    history = {
+        'length'        : -1,
+        'capacity'      : [],
+        'delta_capacity': [],
+        'delta_phi'     : [],
+        'nn_grad_mag'   : [],
+        'grad_mag'      : [],
+        'new_best_epoch': [],
+        'bit_change_epoch': [],
+    }
+
+
+
     for epoch in iterator:
         mag_H_f_sq = model.predict(phi.reshape((1, -1)))
         capacity   = compute_capacity(mag_H_f_sq, rho, sigma_sq)
@@ -181,31 +195,56 @@ def perform_gradient_ascent(model,
         grad       = compute_capacity_gradient(mag_H_f_sq, rho, sigma_sq, nn_grads)
 
 
+        if gradient_clipping is not None: grad = np.clip(grad, -gradient_clipping/len(grad), +gradient_clipping/len(grad))
+
+        phi_next   = phi + learning_rate * grad
+        #phi_next   = np.clip(phi_next, 0, 1)
+
+
+
+
         if capacity > max_capacity:
             max_capacity = capacity
             best_phi     = phi
+            history['new_best_epoch'].append(epoch)
 
-        if gradient_clipping is not None:
-            grad = np.clip(grad, -gradient_clipping/len(grad), +gradient_clipping/len(grad))
 
-        phi_next   = phi + learning_rate * grad
+        if initial_capacity is None: initial_capacity = capacity
+
+
+
+        nn_grad_mag    = np.linalg.norm(nn_grads)
+        grad_mag       = np.linalg.norm(grad)
+        delta_capacity = capacity - initial_capacity
+        delta_phi      = np.linalg.norm(phi_next - phi, 1)
+
+
+        history['length'] = epoch
+        history['nn_grad_mag'].append(nn_grad_mag)
+        history['grad_mag'].append(grad_mag)
+        history['capacity'].append(capacity)
+        history['delta_capacity'].append(delta_capacity)
+        history['delta_phi'].append(delta_phi)
+
+
+
+        if hamming_distance(continuous2binary(phi), continuous2binary(phi_next)) != 0:
+            history['bit_change_epoch'].append(epoch)
+
+
+        if verbose >= 2:
+            tqdm.write(f"[{epoch}/{epochs}] δC = {delta_capacity} | nn grad = {nn_grad_mag} | grad = {grad_mag} | δ phi = {delta_phi}")
 
 
         if np.isnan(capacity) or np.isinf(capacity):
             print("[Gradient Descent] WARNING: NaN of Inf value encountered in capacity. Returning last float value.")
             break
 
-        if initial_capacity is None: initial_capacity = capacity
-
-        delta_capacity = capacity - initial_capacity
-        delta_phi      = np.linalg.norm(phi_next - phi, 1)
-
-        if verbose >= 2:
-            tqdm.write(f"[{epoch}/{epochs}] δC = {delta_capacity} | nn grad = {np.sum(nn_grads)} | grad = {np.sum(grad)} | δ phi = {delta_phi}")
-
         if (epoch+1) % k == 0: phi_next = continuous2binary(phi_next)
 
         phi = phi_next
+
+
 
     phi             = continuous2binary(best_phi)
     capacity        = compute_capacity(model.predict(phi.reshape((1, -1))), rho, sigma_sq)
@@ -214,13 +253,44 @@ def perform_gradient_ascent(model,
     if verbose >= 1:
         print(f"\nGradient ascent: Improvement in capacity: {cap_improvement:.3f}%. bits changed: {hamming_distance(phi, ris_profile)}.")
 
-    return phi, capacity
+    return phi, capacity, history
 
 
 
 
+def plot_gradient_ascent_history(history):
 
 
+    x = np.arange(history['length']+1)
+
+
+    fig, ax = plt.subplots()
+    ax.plot(x, history['capacity'])
+    ax.vlines(history['bit_change_epoch'], min(history['capacity']), max(history['capacity']))
+    #ax.scatter(history['new_best_epoch'], np.array(history['capacity'])[history['new_best_epoch']])
+    ax.set_ylabel('Capacity')
+    ax.set_xlabel('Iteration')
+    plt.show()
+
+    fig, ax = plt.subplots()
+    ax.plot(x, history['delta_capacity'])
+    ax.vlines(history['bit_change_epoch'], min(history['delta_capacity']), max(history['delta_capacity']))
+    ax.set_ylabel('δ capacity')
+    ax11 = ax.twinx()
+    ax11.plot(x, history['delta_phi'], c='r')
+    ax11.set_ylabel('δ Φ',c='r')
+    ax.set_xlabel('Iteration')
+    plt.show()
+
+    fig, ax = plt.subplots()
+    ax.plot(x, history['grad_mag'])
+    ax.vlines(history['bit_change_epoch'], min(history['grad_mag']), max(history['grad_mag']))
+    ax.set_ylabel('Gradient Magnitude')
+    ax22 = ax.twinx()
+    ax22.plot(x, history['nn_grad_mag'], c='r')
+    ax22.set_ylabel('Neuralnet Gradient Magnitude', c='r')
+    ax.set_xlabel('Iteration')
+    plt.show()
 
 
 # # ---------------------------------------------------------------
@@ -228,9 +298,13 @@ def perform_gradient_ascent(model,
 # # --------------------------------------------------------------
 known_RIS_profiles, known_avg_mag_responses = load_data(setup, together=True)
 known_capacities                            = np.empty(known_avg_mag_responses.shape[0])
-for i in range(known_avg_mag_responses.shape[0]): known_capacities[i] = compute_capacity(known_avg_mag_responses[i], setup.rho, setup.sigma_sq)
+for i in range(known_avg_mag_responses.shape[0]):
+    known_capacities[i] = compute_capacity(known_avg_mag_responses[i,:], setup.rho, setup.sigma_sq)
 gt_mean = known_capacities.mean()
 gt_std  = known_capacities.std()
+#
+# plt.hist(known_capacities)
+# plt.show()
 
 
 # nn_mean, nn_std = neuralnet_statistics(model, setup.num_RIS_elements, setup.rho, setup.sigma_sq, samples=10000)
@@ -245,14 +319,14 @@ gt_std  = known_capacities.std()
 #
 # Random Search
 #
-rand_best_profile, rand_best_capacity, avg_capacity = random_walk_optimize_capacity(model, setup.rho, setup.sigma_sq, 1000)
+rand_best_profile, rand_best_capacity, avg_capacity = random_walk_optimize_capacity(model, setup.rho, setup.sigma_sq, 10000)
 
 
 #
 # Exhaustive Search
 #
-#best_profile_exhaustive, _, avg_capacity = exhaustive_search_maximize_capacity(model, setup.rho, setup.sigma_sq, verbose=2)
-best_profile_exhaustive = np.array([0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 1., 1., 1., 0., 0., 0., 0., 0., 1., 1.])
+#best_profile_exhaustive, _, avg_capacity = exhaustive_search_maximize_capacity(model, setup.rho, setup.sigma_sq, verbose=0)
+best_profile_exhaustive = np.array([0., 1., 1., 0., 1., 0., 0., 0., 0., 0., 1., 0., 1., 0., 1., 0., 0., 0., 0., 1., 1.])
 best_profile_exhaustive = np.array(best_profile_exhaustive, dtype=float)
 best_capacity_exhaustive = compute_capacity(model.predict(best_profile_exhaustive.reshape((1,-1)))[0,:], setup.rho, setup.sigma_sq)
 
@@ -262,15 +336,19 @@ best_capacity_exhaustive = compute_capacity(model.predict(best_profile_exhaustiv
 #
 # Gradient Descent
 #
-best_phi_gd, best_capacity_gd = perform_gradient_ascent(model,
+best_phi_gd, best_capacity_gd, gd_history  = perform_gradient_ascent(model,
                                                   ris_profile=rand_best_profile,
                                                   rho=setup.rho,
                                                   sigma_sq=setup.sigma_sq,
-                                                  epochs=3000,
+                                                  epochs=10000,
                                                   k=np.infty,
                                                   learning_rate=1.1e-4,
                                                   #gradient_clipping = 100,
-                                                  verbose=2)
+                                                  verbose=1)
+
+
+plot_gradient_ascent_history(gd_history)
+
 #
 # Genetic Algorithm
 #
@@ -278,7 +356,7 @@ def objective_func(ris_profile):
     mag_H_f_sq = model.predict(ris_profile.reshape((1,-1)))
     return compute_capacity(mag_H_f_sq, setup.rho, setup.sigma_sq)
 
-ga_ris_profile, ga_capacity = genetic_algorithm(objective_func, setup.num_RIS_elements, 3000//50, 50, 0.5, 0.1)
+ga_ris_profile, ga_capacity = genetic_algorithm(objective_func, setup.num_RIS_elements, 10000//50, 50, 0.9, 0.1)
 
 
 
@@ -322,7 +400,3 @@ print(f" > {hamming_distance(ga_ris_profile, best_profile_exhaustive.astype(int)
 print(f' > Capacity: {ga_capacity}')
 print(f" > {ga_capacity / best_capacity_exhaustive} of optimal. ")
 print(f" > {ga_capacity / avg_capacity} of average. ")
-
-
-
-
