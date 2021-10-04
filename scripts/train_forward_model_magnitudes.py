@@ -47,10 +47,10 @@ print("\n Running setup: "+setup.get_description(' ','=')+"\n")
 RIS_configs_train, avg_squared_mag_response_train, RIS_configs_test, avg_squared_mag_response_test = load_data(setup, together=False)
 
 
-sns.distplot(avg_squared_mag_response_train, label='Train')
-sns.distplot(avg_squared_mag_response_test, label='Test')
-plt.xlabel('$\mathbb{E}[|H(f)|^2]$')
-plt.show()
+# sns.distplot(avg_squared_mag_response_train, label='Train')
+# sns.distplot(avg_squared_mag_response_test, label='Test')
+# plt.xlabel('$\mathbb{E}[|H(f)|^2]$')
+# plt.show()
 
 
 
@@ -63,9 +63,9 @@ y_train      = avg_squared_mag_response_train
 y_test       = avg_squared_mag_response_test
 
 
-X_train = X_train + np.random.normal(scale=0.01, size=X_train.shape)
-training_data_loss_weights = calculate_Z_scores(y_train)
-training_data_loss_weights = max_min_scale_1D(training_data_loss_weights)
+#X_train = X_train + np.random.normal(scale=0.01, size=X_train.shape)
+#training_data_loss_weights = calculate_Z_scores(y_train)
+#training_data_loss_weights = max_min_scale_1D(training_data_loss_weights)
 
 
 random_id = str(np.random.randint(2**32))
@@ -77,12 +77,12 @@ filename = setup.get_model_filename(random_id)
 
 
 reg   = 5e-8
-p     = 0.0005
+#p     = 0.0005
 inp   = keras.layers.Input((X_train.shape[1],))
 x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(reg))(inp)
-x     = keras.layers.Dropout(p)(x)
+#x     = keras.layers.Dropout(p)(x)
 x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(reg))(x)
-x     = keras.layers.Dropout(p)(x)
+#x     = keras.layers.Dropout(p)(x)
 # x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
 # x     = keras.layers.Dropout(p)(x)
 # x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
@@ -108,7 +108,7 @@ history = model.fit(X_train,
                     epochs=2500,
                     batch_size=80,
                     validation_data=(X_test, y_test),
-                    sample_weight=training_data_loss_weights,
+                    #sample_weight=training_data_loss_weights,
                     verbose=0,
                     callbacks=[tqdm_callback, stopping_callback],
           )

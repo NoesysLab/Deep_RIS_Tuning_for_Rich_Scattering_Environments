@@ -24,7 +24,7 @@ from tensorflow.keras import backend as K
 random_id = 1501880932
 
 
-setup          = Setup(1, 3, 15)
+setup          = Setup(1, 3, 12.5)
 model_filename = setup.get_model_filename(random_id)
 model          = tf.keras.models.load_model(model_filename)
 
@@ -144,6 +144,7 @@ def compute_capacity_gradient(mag_H_f_sq,
                               neuralnet_gradients):
 
     scale = np.sum( rho / (sigma_sq + mag_H_f_sq * rho) )
+    #scale = np.sum(rho / (sigma_sq * np.log(2)))
     grad = scale * neuralnet_gradients.flatten()
     return grad
 
@@ -161,6 +162,7 @@ def perform_gradient_ascent(model,
                             k,
                             learning_rate=10e-2,
                             gradient_clipping=None,
+                            reg_lambda=1e-3,
                             verbose=0):
 
     gradient_wrt_input = K.function(inputs=model.input, outputs=K.gradients(model.output, model.input))
@@ -192,7 +194,9 @@ def perform_gradient_ascent(model,
         capacity   = compute_capacity(mag_H_f_sq, rho, sigma_sq)
         nn_grads   = gradient_wrt_input(inputs=phi.reshape((1, -1)))[0]
         nn_grads   = nn_grads[0, :]
+        norm_grads = 2 * np.abs(phi)
         grad       = compute_capacity_gradient(mag_H_f_sq, rho, sigma_sq, nn_grads)
+        grad       = grad + reg_lambda * norm_grads
 
 
         if gradient_clipping is not None: grad = np.clip(grad, -gradient_clipping/len(grad), +gradient_clipping/len(grad))
@@ -319,7 +323,7 @@ gt_std  = known_capacities.std()
 #
 # Random Search
 #
-rand_best_profile, rand_best_capacity, avg_capacity = random_walk_optimize_capacity(model, setup.rho, setup.sigma_sq, 10000)
+rand_best_profile, rand_best_capacity, avg_capacity = random_walk_optimize_capacity(model, setup.rho, setup.sigma_sq, 5000)
 
 
 #
@@ -336,18 +340,19 @@ best_capacity_exhaustive = compute_capacity(model.predict(best_profile_exhaustiv
 #
 # Gradient Descent
 #
-best_phi_gd, best_capacity_gd, gd_history  = perform_gradient_ascent(model,
-                                                  ris_profile=rand_best_profile,
-                                                  rho=setup.rho,
-                                                  sigma_sq=setup.sigma_sq,
-                                                  epochs=10000,
-                                                  k=np.infty,
-                                                  learning_rate=1.1e-4,
-                                                  #gradient_clipping = 100,
-                                                  verbose=1)
-
-
-plot_gradient_ascent_history(gd_history)
+# best_phi_gd, best_capacity_gd, gd_history  = perform_gradient_ascent(model,
+#                                                   ris_profile=rand_best_profile,
+#                                                   rho=setup.rho,
+#                                                   sigma_sq=setup.sigma_sq,
+#                                                   epochs=10000,
+#                                                   k=np.infty,
+#                                                   learning_rate=1.1e-4,
+#                                                   #gradient_clipping = 100,
+#                                                   reg_lambda=0,
+#                                                   verbose=1)
+#
+#
+# plot_gradient_ascent_history(gd_history)
 
 #
 # Genetic Algorithm
@@ -356,7 +361,47 @@ def objective_func(ris_profile):
     mag_H_f_sq = model.predict(ris_profile.reshape((1,-1)))
     return compute_capacity(mag_H_f_sq, setup.rho, setup.sigma_sq)
 
-ga_ris_profile, ga_capacity = genetic_algorithm(objective_func, setup.num_RIS_elements, 10000//50, 50, 0.9, 0.1)
+
+
+def grid_search_genetic(num_evaluations=5000):
+    p_mut_vals   = [0.01, 0.02, 0.05, 0.1, 0.2]
+    k_vals       = [3, 5, 10, 20]
+    pop_sizes    = [50, 100, 200]
+
+    num_variants = len(k_vals) * len(p_mut_vals) * len(pop_sizes)
+
+    val_best    = -np.infty
+    params_best = None
+
+    pbar = tqdm(total=num_variants)
+    for k in k_vals:
+        for p_mut in p_mut_vals:
+            for pop in pop_sizes:
+                pbar.update()
+
+                _, val = genetic_algorithm(objective_func, setup.num_RIS_elements, num_evaluations // pop, pop, .5, p_mut, k=k)
+
+                tqdm.write(f"Tried k: {k:2d}, p_mut: {p_mut:.2f}, pop: {pop:3d} | Rate: {val:6.4f}")
+
+                if val > val_best:
+                    val_best, params_best = val, (k, p_mut, pop)
+                    tqdm.write("[updated best]")
+
+    return params_best
+
+
+
+k_best, p_mut_best, pop_best = grid_search_genetic(1000)
+# k_best = 6#np.random.choice([3, 5, 10, 20])
+# p_mut_best = 0.2#np.random.choice([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.75, 0.9, 0.95, 0.99])
+# pop_best = 200#np.random.choice([50,100,200])
+ga_ris_profile, ga_capacity = genetic_algorithm(objective_func, setup.num_RIS_elements, 20000//pop_best, pop_best, .1, p_mut_best, k=k_best)
+
+
+
+
+
+
 
 
 
@@ -364,7 +409,7 @@ ga_ris_profile, ga_capacity = genetic_algorithm(objective_func, setup.num_RIS_el
 #
 # Indexed data (ground truth capacities)
 #
-best_known_capacity  = float(known_capacities.max())
+#best_known_capacity  = float(known_capacities.max())
 
 
 
@@ -377,10 +422,10 @@ print(f' > Capacity: {best_capacity_exhaustive}')
 print(f' > {best_capacity_exhaustive/best_capacity_exhaustive} of optimal.')
 print(f' > {best_capacity_exhaustive/avg_capacity} of average. (Average is {avg_capacity/best_capacity_exhaustive} of optimal.)')
 
-print(f'\nIndexed data\n-------------------')
-print(f'> Capacity {best_known_capacity} (NOTE: Computed via known magnitudes and not through the network')
-print(f" > {best_known_capacity / best_capacity_exhaustive} of optimal. ")
-print(f" > {best_known_capacity / avg_capacity} of average. ")
+# print(f'\nIndexed data\n-------------------')
+# print(f'> Capacity {best_known_capacity} (NOTE: Computed via known magnitudes and not through the network')
+# print(f" > {best_known_capacity / best_capacity_exhaustive} of optimal. ")
+# print(f" > {best_known_capacity / avg_capacity} of average. ")
 
 
 print("\nBest out of Random\n--------------------")
@@ -389,11 +434,11 @@ print(f" > Capacity: {rand_best_capacity}")
 print(f" > {rand_best_capacity/best_capacity_exhaustive} of optimal.")
 print(f" > {rand_best_capacity/avg_capacity} of average.")
 
-print(f'\nGradient Descent\n-------------------')
-print(f" > {hamming_distance(best_phi_gd, best_profile_exhaustive)} bits different from optimal RIS profile.")
-print(f' > Capacity: {best_capacity_gd}')
-print(f" > {best_capacity_gd/best_capacity_exhaustive} of global optimal. ")
-print(f" > {best_capacity_gd/avg_capacity} of average. ")
+# print(f'\nGradient Descent\n-------------------')
+# print(f" > {hamming_distance(best_phi_gd, best_profile_exhaustive)} bits different from optimal RIS profile.")
+# print(f' > Capacity: {best_capacity_gd}')
+# print(f" > {best_capacity_gd/best_capacity_exhaustive} of global optimal. ")
+# print(f" > {best_capacity_gd/avg_capacity} of average. ")
 
 print(f'\nGenetic Algorithm\n------------------')
 print(f" > {hamming_distance(ga_ris_profile, best_profile_exhaustive.astype(int))} bits different from optimal RIS profile.")
