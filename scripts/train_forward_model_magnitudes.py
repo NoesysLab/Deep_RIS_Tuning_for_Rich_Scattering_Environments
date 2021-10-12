@@ -62,6 +62,15 @@ X_test       = RIS_configs_test.astype(np.float32)
 y_train      = avg_squared_mag_response_train
 y_test       = avg_squared_mag_response_test
 
+n_train      = y_test.shape[0]
+
+X_val        = X_test[:n_train//2,:]
+y_val        = y_test[:n_train//2,:]
+
+X_test       = X_test[n_train//2:,:]
+y_test       = y_test[n_train//2:,:]
+
+
 
 #X_train = X_train + np.random.normal(scale=0.01, size=X_train.shape)
 #training_data_loss_weights = calculate_Z_scores(y_train)
@@ -76,13 +85,13 @@ filename = setup.get_model_filename(random_id)
 
 
 
-reg   = 5e-8
-#p     = 0.0005
+reg   = 2.5e-5
+p     = 0.0000
 inp   = keras.layers.Input((X_train.shape[1],))
-x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(reg))(inp)
-#x     = keras.layers.Dropout(p)(x)
-x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(reg))(x)
-#x     = keras.layers.Dropout(p)(x)
+x     = keras.layers.Dense(64, activation='relu', activity_regularizer=tf.keras.regularizers.l2(reg))(inp)
+x     = keras.layers.Dropout(p)(x)
+x     = keras.layers.Dense(64, activation='relu', activity_regularizer=tf.keras.regularizers.l2(reg))(x)
+x     = keras.layers.Dropout(p)(x)
 # x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
 # x     = keras.layers.Dropout(p)(x)
 # x     = keras.layers.Dense(64, activation='relu', kernel_regularizer=l2(reg))(x)
@@ -92,7 +101,7 @@ out    = keras.layers.Dense(y_train.shape[1], activation='linear', name='out')(x
 
 model = keras.Model(inp, out)
 
-stopping_callback = tf.keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=0, patience=100, verbose=1)
+stopping_callback = tf.keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=0, patience=50, verbose=1)
 tqdm_callback    = TqdmCallback(verbose=0)
 
 
@@ -107,12 +116,12 @@ history = model.fit(X_train,
                     y_train,
                     epochs=2500,
                     batch_size=80,
-                    validation_data=(X_test, y_test),
+                    validation_data=(X_val, y_val),
                     #sample_weight=training_data_loss_weights,
                     verbose=0,
                     callbacks=[tqdm_callback, stopping_callback],
           )
-plot_training_history(history)
+#plot_training_history(history)
 
 
 
@@ -168,21 +177,21 @@ print(f"random data (continuous)predicted capacities: mean {capacities_continuou
 
 
 
-sns.set_theme()
-fig, ax = plt.subplots(figsize=(15,8))
-
-sns.distplot(capacities_ground_truth, hist=True, rug=False, label='Dataset (ground truth)')
-#sns.distplot(capacities_data_pred,    hist=True, rug=False, label='Dataset (predicted)')
-sns.distplot(capacities_rand_pred,    hist=True, rug=False, label='Random RIS profiles (predicted)')
-sns.distplot(capacities_continuous_rand,    hist=True, rug=False, label='Continuous Random RIS profiles (predicted)')
-
-plt.xlim(xlim)
-plt.legend(fontsize=16)
-plt.xlabel('$C(\Phi)$', fontsize=16)
-plt.ylabel('Density', fontsize=16)
-#plt.grid()
-plt.savefig(filename+'.png')
-plt.show()
+# sns.set_theme()
+# fig, ax = plt.subplots(figsize=(15,8))
+#
+# sns.distplot(capacities_ground_truth, hist=True, rug=False, label='Dataset (ground truth)')
+# #sns.distplot(capacities_data_pred,    hist=True, rug=False, label='Dataset (predicted)')
+# sns.distplot(capacities_rand_pred,    hist=True, rug=False, label='Random RIS profiles (predicted)')
+# sns.distplot(capacities_continuous_rand,    hist=True, rug=False, label='Continuous Random RIS profiles (predicted)')
+#
+# plt.xlim(xlim)
+# plt.legend(fontsize=16)
+# plt.xlabel('$C(\Phi)$', fontsize=16)
+# plt.ylabel('Density', fontsize=16)
+# #plt.grid()
+# plt.savefig(filename+'.png')
+# plt.show()
 
 
 sns.set_theme()
@@ -202,6 +211,29 @@ plt.show()
 
 
 
+
+#
+#
+#
+#
+#
+#
+#
+# # # # # # #  Plotting Magnitudes # # # # # # # # #
+
+
+index = np.random.randint(0, X_test.shape[0], size=10)
+X_plot = X_test[index, :]
+y_plot = y_test[index, :]
+
+y_plot_pred = model.predict(X_plot)
+
+
+for i in range(X_plot.shape[0]):
+
+    print('\nΦ: ', repr(X_plot[0,:]))
+    print('ground truth:', repr(y_plot[0,:]))
+    print('predicted: ', repr(y_plot_pred[0,:]))
 
 
 
