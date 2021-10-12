@@ -1,4 +1,4 @@
-#Code for paper "Deep-Learning-Assisted Configuration of Reconfigurable Intelligent Surfaces in Dynamic rich-scattering Environments"
+# Code for paper "Deep-Learning-Assisted Configuration of Reconfigurable Intelligent Surfaces in Dynamic rich-scattering Environments"
 
 ---
 **Kyriakos Stylianopoulos, Nir Shlezinger, Philipp del Hougne, and George C. Alexandropoulos**
