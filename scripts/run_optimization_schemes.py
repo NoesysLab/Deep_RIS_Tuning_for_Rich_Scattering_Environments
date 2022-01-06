@@ -21,7 +21,7 @@ from tensorflow.keras import backend as K
 
 
 
-random_id = 1501880932
+random_id = 598582900#1501880932
 
 
 setup          = Setup(1, 3, 15)
@@ -154,24 +154,22 @@ def grid_search_genetic(num_evaluations=5000):
 #
 # Genetic Algorithm
 #
-k_best, p_mut_best, pop_best = grid_search_genetic(500)
-# k_best = 6#np.random.choice([3, 5, 10, 20])
-# p_mut_best = 0.2#np.random.choice([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.75, 0.9, 0.95, 0.99])
-# pop_best = 200#np.random.choice([50,100,200])
-ga_ris_profile, ga_capacity = genetic_algorithm(objective_func, setup.num_RIS_elements, 20000//pop_best, pop_best, .1, p_mut_best, k=k_best)
+#k_best, p_mut_best, pop_best = grid_search_genetic(500)
+k_best, p_mut_best, pop_best = (3, 0.1, 100)
+ga_ris_profile, ga_capacity = genetic_algorithm(objective_func, setup.num_RIS_elements, 100000//pop_best, pop_best, 0.2, p_mut_best, k=k_best, verbose=1)
 
 
 #
 # Random Search
 #
-rand_best_profile, rand_best_capacity, avg_capacity = random_walk_optimize_capacity(model, setup.rho, setup.sigma_sq, 5000)
+rand_best_profile, rand_best_capacity, avg_capacity = random_walk_optimize_capacity(model, setup.rho, setup.sigma_sq, 100000)
 
 
 #
 # Exhaustive Search
 #
-#best_profile_exhaustive, _, avg_capacity = exhaustive_search_maximize_capacity(model, setup.rho, setup.sigma_sq, verbose=0)
-best_profile_exhaustive = np.array([0., 1., 1., 0., 1., 0., 0., 0., 0., 0., 1., 0., 1., 0., 1., 0., 0., 0., 0., 1., 1.])
+best_profile_exhaustive, _, avg_capacity = exhaustive_search_maximize_capacity(model, setup.rho, setup.sigma_sq, verbose=1)
+#best_profile_exhaustive = np.array([0., 1., 1., 0., 1., 0., 0., 0., 0., 0., 1., 0., 1., 0., 1., 0., 0., 0., 0., 1., 1.])
 best_profile_exhaustive = np.array(best_profile_exhaustive, dtype=float)
 best_capacity_exhaustive = compute_capacity(model.predict(best_profile_exhaustive.reshape((1,-1)))[0,:], setup.rho, setup.sigma_sq)
 
