@@ -1,0 +1,146 @@
+ID 45251580
+
+# # # # #
+#       #
+# 10 dB #
+#       #
+# # # # #
+
+Exhaustive search
+-------------------
+Best RIS profile at SNR 10 (dB): [0. 1. 1. 0. 1. 0. 1. 1. 1. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 1. 1.].
+ > Capacity: 9.718783796557876
+ > 1.0 of optimal.
+ > 1.221301242572897 of average. (Average is 0.8187988066673173 of optimal.)
+
+Best out of Random
+--------------------
+ > 5 bits different from optimal RIS profile.
+ > Capacity: 9.35244989197748
+ > 0.9623066103487001 of optimal.
+ > 1.1752662589549803 of average.
+
+Genetic Algorithm
+------------------
+ > 6 bits different from optimal RIS profile.
+ > Capacity: 9.358106473387762
+ > 0.9628886359939548 of optimal.
+ > 1.175977087598739 of average.
+
+
+
+
+# # # # # #
+#         #
+# 12.5 dB #
+#         #
+# # # # # #
+
+Exhaustive search
+-------------------
+Best RIS profile at SNR 12.5 (dB): [0. 1. 1. 0. 1. 0. 1. 1. 1. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 1. 1.].
+ > Capacity: 10.514777219664214
+ > 1.0 of optimal.
+ > 1.217948906718614 of average. (Average is 0.8210525043240035 of optimal.)
+
+Best out of Random
+--------------------
+ > 5 bits different from optimal RIS profile.
+ > Capacity: 10.125601342600696
+ > 0.9629877201453493 of optimal.
+ > 1.1728698409344787 of average.
+
+Genetic Algorithm
+------------------
+ > 1 bits different from optimal RIS profile.
+ > Capacity: 10.41713225898544
+ > 0.990713549261304 of optimal.
+ > 1.206638484194123 of average.
+
+
+
+# # # # #
+#       #
+# 15 dB #
+#       #
+# # # # #
+
+
+Exhaustive search
+-------------------
+Best RIS profile at SNR 15 (dB): [0. 1. 1. 0. 1. 0. 1. 1. 1. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 1. 1.].
+ > Capacity: 11.150880873648875
+ > 1.0 of optimal.
+ > 1.2153942555127617 of average. (Average is 0.8227782840540997 of optimal.)
+
+Best out of Random
+--------------------
+ > 5 bits different from optimal RIS profile.
+ > Capacity: 10.744159708402377
+ > 0.9635256469999928 of optimal.
+ > 1.1710635364030082 of average.
+
+Genetic Algorithm
+------------------
+ > 2 bits different from optimal RIS profile.
+ > Capacity: 10.90820658827793
+ > 0.9782372094078756 of optimal.
+ > 1.1889438848431666 of average.
+
+
+
+# # # # # #
+#         #
+# 17.5 dB #
+#         #
+# # # # # #
+
+Exhaustive search
+-------------------
+Best RIS profile at SNR 17.5 (dB): [0. 1. 1. 0. 1. 0. 1. 1. 1. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 1. 1.].
+ > Capacity: 11.679155765774293
+ > 1.0 of optimal.
+ > 1.2132300933325242 of average. (Average is 0.8242459575439482 of optimal.)
+
+Best out of Random
+--------------------
+ > 5 bits different from optimal RIS profile.
+ > Capacity: 11.258337791704188
+ > 0.963968459492311 of optimal.
+ > 1.169515544079466 of average.
+
+Genetic Algorithm
+------------------
+ > 2 bits different from optimal RIS profile.
+ > Capacity: 11.328904256113796
+ > 0.9700105455664092 of optimal.
+ > 1.1768459847310673 of average.
+
+
+
+# # # # # #
+#         #
+#  20 dB  #
+#         #
+# # # # # #
+
+Exhaustive search
+-------------------
+Best RIS profile at SNR 20 (dB): [0. 1. 1. 0. 1. 0. 1. 1. 1. 0. 0. 0. 0. 0. 0. 0. 0. 1. 0. 1. 1.].
+ > Capacity: 12.129970993800159
+ > 1.0 of optimal.
+ > 1.2114579173761517 of average. (Average is 0.8254517021654868 of optimal.)
+
+Best out of Random
+--------------------
+ > 5 bits different from optimal RIS profile.
+ > Capacity: 11.697461372799944
+ > 0.9643437217433349 of optimal.
+ > 1.1682618367779476 of average.
+
+Genetic Algorithm
+------------------
+ > 2 bits different from optimal RIS profile.
+ > Capacity: 11.77210555867211
+ > 0.9704974203721541 of optimal.
+ > 1.1757167837029774 of average.

@@ -21,10 +21,10 @@ from tensorflow.keras import backend as K
 
 
 
-random_id = 598582900#1501880932
+random_id = 45251580#1501880932
 
 
-setup          = Setup(1, 3, 15)
+setup          = Setup(1, 3, 20)
 model_filename = setup.get_model_filename(random_id)
 model          = tf.keras.models.load_model(model_filename)
 
@@ -168,8 +168,8 @@ rand_best_profile, rand_best_capacity, avg_capacity = random_walk_optimize_capac
 #
 # Exhaustive Search
 #
-best_profile_exhaustive, _, avg_capacity = exhaustive_search_maximize_capacity(model, setup.rho, setup.sigma_sq, verbose=1)
-#best_profile_exhaustive = np.array([0., 1., 1., 0., 1., 0., 0., 0., 0., 0., 1., 0., 1., 0., 1., 0., 0., 0., 0., 1., 1.])
+#best_profile_exhaustive, _, avg_capacity = exhaustive_search_maximize_capacity(model, setup.rho, setup.sigma_sq, verbose=1)
+best_profile_exhaustive = np.array([0., 1., 1., 0., 1., 0., 1., 1., 1., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 1., 1.])
 best_profile_exhaustive = np.array(best_profile_exhaustive, dtype=float)
 best_capacity_exhaustive = compute_capacity(model.predict(best_profile_exhaustive.reshape((1,-1)))[0,:], setup.rho, setup.sigma_sq)
 
